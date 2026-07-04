@@ -13,4 +13,9 @@ jobs:
           elixir-version: '1.16'
       - run: mix deps.get
       - run: mix compile --warnings-as-errors
-      - run: mix test
+      - run: mix test --cover
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
