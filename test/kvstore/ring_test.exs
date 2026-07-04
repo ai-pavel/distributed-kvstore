@@ -4,12 +4,18 @@ defmodule KVStore.RingTest do
   alias KVStore.Ring
 
   setup do
-    # Stop existing ring if running, then start a fresh one
-    if Process.whereis(Ring), do: GenServer.stop(Ring)
-    {:ok, _} = Ring.start_link([])
+    # The application supervisor already starts Ring. Instead of stopping and
+    # restarting the supervised process (which races with the supervisor's
+    # automatic restarts and can crash the application), we clean the ring
+    # state by removing all existing nodes before each test.
+    for node_id <- Ring.nodes() do
+      Ring.remove_node(node_id)
+    end
 
     on_exit(fn ->
-      if Process.whereis(Ring), do: GenServer.stop(Ring)
+      for node_id <- Ring.nodes() do
+        Ring.remove_node(node_id)
+      end
     end)
 
     :ok

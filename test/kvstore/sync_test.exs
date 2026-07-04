@@ -2,22 +2,17 @@ defmodule KVStore.SyncTest do
   use ExUnit.Case, async: false
 
   alias KVStore.{Ring, Node, Sync}
-  alias KVStore.CRDT.LWWRegister
 
   setup do
-    # Ensure registry
-    case Registry.start_link(keys: :unique, name: KVStore.NodeRegistry) do
-      {:ok, _} -> :ok
-      {:error, {:already_started, _}} -> :ok
-    end
+    # The application supervisor already starts Ring, Sync, and the NodeRegistry.
+    # Instead of stopping/restarting supervised processes (which races with the
+    # supervisor's automatic restarts), we clean up the existing Ring state and
+    # add fresh test nodes.
 
-    # Stop existing processes if running
-    for name <- [Ring, Sync] do
-      if Process.whereis(name), do: GenServer.stop(name)
+    # Remove all existing nodes from the ring so each test starts clean
+    for node_id <- Ring.nodes() do
+      Ring.remove_node(node_id)
     end
-
-    {:ok, _} = Ring.start_link([])
-    {:ok, _} = Sync.start_link([])
 
     # Start two test nodes
     node_a = :"sync_a_#{:erlang.unique_integer([:positive])}"
@@ -32,8 +27,9 @@ defmodule KVStore.SyncTest do
     on_exit(fn ->
       if Process.alive?(pid_a), do: GenServer.stop(pid_a)
       if Process.alive?(pid_b), do: GenServer.stop(pid_b)
-      if Process.whereis(Ring), do: GenServer.stop(Ring)
-      if Process.whereis(Sync), do: GenServer.stop(Sync)
+      # Clean up test nodes from the ring
+      Ring.remove_node(node_a)
+      Ring.remove_node(node_b)
     end)
 
     {:ok, node_a: node_a, node_b: node_b}
