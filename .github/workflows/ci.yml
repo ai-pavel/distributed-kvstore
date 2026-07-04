@@ -22,6 +22,11 @@ jobs:
       - name: Generate lcov coverage
         run: |
           mix run -e '
+            root = :code.root_dir() |> to_string()
+            case Path.wildcard(Path.join(root, "lib/tools-*/ebin")) do
+              [ebin | _] -> :code.add_pathz(to_charlist(ebin))
+              [] -> :ok
+            end
             :cover.import(~c"cover/default.coverdata")
             {:ok, f} = File.open("lcov.info", [:write])
             for mod <- :cover.modules() do
