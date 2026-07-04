@@ -1,7 +1,7 @@
 # Distributed KV Store
 
-[![CI](https://github.com/pavel-genai/distributed-kvstore/actions/workflows/ci.yml/badge.svg)](https://github.com/pavel-genai/distributed-kvstore/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/pavel-genai/distributed-kvstore/branch/main/graph/badge.svg)](https://codecov.io/gh/pavel-genai/distributed-kvstore)
+[![CI](https://github.com/ai-pavel/distributed-kvstore/actions/workflows/ci.yml/badge.svg)](https://github.com/ai-pavel/distributed-kvstore/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/ai-pavel/distributed-kvstore/branch/main/graph/badge.svg)](https://codecov.io/gh/ai-pavel/distributed-kvstore)
 
 An Elixir/OTP distributed key-value store using consistent hashing, CRDTs, and Merkle tree-based anti-entropy sync.
 
