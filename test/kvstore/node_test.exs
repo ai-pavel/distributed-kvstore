@@ -15,7 +15,11 @@ defmodule KVStore.NodeTest do
     {:ok, pid} = Node.start_link(node_id)
 
     on_exit(fn ->
-      if Process.alive?(pid), do: GenServer.stop(pid)
+      try do
+        if Process.alive?(pid), do: GenServer.stop(pid)
+      catch
+        :exit, _ -> :ok
+      end
     end)
 
     {:ok, node_id: node_id}
