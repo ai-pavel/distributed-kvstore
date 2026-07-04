@@ -21,7 +21,7 @@ jobs:
           exit $rc
       - name: Generate lcov coverage
         run: |
-          mix run --no-start -e '
+          mix run -e '
             :cover.import(~c"cover/default.coverdata")
             {:ok, f} = File.open("lcov.info", [:write])
             for mod <- :cover.modules() do
