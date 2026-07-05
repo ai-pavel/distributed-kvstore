@@ -37,13 +37,39 @@ defmodule KVStore.MerkleTree do
   @doc """
   Compares two Merkle trees and returns the list of keys that differ
   (present in one but not the other, or with different hashes).
+
+  The two trees may have been built from different key *sets* (the common
+  case that triggers anti-entropy sync), which means their internal shapes
+  differ and a structural node-by-node walk would compare unrelated
+  subtrees. Instead we collect each tree's `{key, hash}` leaves into a map
+  and return exactly the keys whose hashes differ or that appear in only
+  one tree. Callers should still compare `root_hash/1` first as a cheap
+  equality fast-path before calling `diff/2`.
   """
   @spec diff(t(), t()) :: [String.t()]
   def diff(%__MODULE__{root: a}, %__MODULE__{root: b}) do
-    diff_nodes(a, b) |> Enum.uniq() |> Enum.sort()
+    leaves_a = leaves(a)
+    leaves_b = leaves(b)
+
+    keys = MapSet.union(MapSet.new(Map.keys(leaves_a)), MapSet.new(Map.keys(leaves_b)))
+
+    keys
+    |> Enum.filter(fn key ->
+      Map.get(leaves_a, key) != Map.get(leaves_b, key)
+    end)
+    |> Enum.sort()
   end
 
   ## Internal
+
+  # Collects every {key, hash} leaf in the tree into a map keyed by key.
+  @spec leaves(tree_node()) :: %{String.t() => hash()}
+  defp leaves(:empty), do: %{}
+  defp leaves({:leaf, key, hash}), do: %{key => hash}
+
+  defp leaves({:node, _hash, left, right}) do
+    Map.merge(leaves(left), leaves(right))
+  end
 
   defp build_tree([single]), do: single
 
@@ -68,32 +94,4 @@ defmodule KVStore.MerkleTree do
   defp hash_pair(a, b) do
     :crypto.hash(:sha256, a <> b)
   end
-
-  defp diff_nodes(:empty, :empty), do: []
-  defp diff_nodes(:empty, other), do: collect_keys(other)
-  defp diff_nodes(other, :empty), do: collect_keys(other)
-
-  defp diff_nodes(a, b) do
-    if node_hash(a) == node_hash(b) do
-      []
-    else
-      case {a, b} do
-        {{:leaf, key_a, _}, {:leaf, key_b, _}} ->
-          if key_a == key_b, do: [key_a], else: [key_a, key_b]
-
-        {{:node, _, la, ra}, {:node, _, lb, rb}} ->
-          diff_nodes(la, lb) ++ diff_nodes(ra, rb)
-
-        {{:leaf, key, _}, {:node, _, _, _}} ->
-          [key | collect_keys(b)]
-
-        {{:node, _, _, _}, {:leaf, key, _}} ->
-          collect_keys(a) ++ [key]
-      end
-    end
-  end
-
-  defp collect_keys(:empty), do: []
-  defp collect_keys({:leaf, key, _}), do: [key]
-  defp collect_keys({:node, _, left, right}), do: collect_keys(left) ++ collect_keys(right)
 end

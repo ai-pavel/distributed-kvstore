@@ -77,4 +77,39 @@ defmodule KVStore.MerkleTreeTest do
     assert "x" in diff
     assert "y" in diff
   end
+
+  defp leaf(key, value), do: {key, :crypto.hash(:sha256, value)}
+
+  test "diff detects fully disjoint key sets" do
+    tree_a = MerkleTree.build([leaf("a", "1"), leaf("b", "2")])
+    tree_b = MerkleTree.build([leaf("c", "3"), leaf("d", "4")])
+
+    assert MerkleTree.diff(tree_a, tree_b) == ["a", "b", "c", "d"]
+  end
+
+  test "diff detects one-sided insertions" do
+    # tree_b has every key tree_a has, plus two extra.
+    tree_a = MerkleTree.build([leaf("a", "1"), leaf("c", "3")])
+    tree_b = MerkleTree.build([leaf("a", "1"), leaf("b", "2"), leaf("c", "3"), leaf("d", "4")])
+
+    assert MerkleTree.diff(tree_a, tree_b) == ["b", "d"]
+  end
+
+  test "diff detects differences across interleaved key sets" do
+    # Interleaved keys: shared-but-changed key ("c") plus disjoint tails.
+    tree_a = MerkleTree.build([leaf("a", "1"), leaf("c", "old"), leaf("e", "5")])
+    tree_b = MerkleTree.build([leaf("b", "2"), leaf("c", "new"), leaf("d", "4")])
+
+    assert MerkleTree.diff(tree_a, tree_b) == ["a", "b", "c", "d", "e"]
+  end
+
+  test "diff ignores keys whose hashes match even when other keys differ" do
+    tree_a = MerkleTree.build([leaf("a", "same"), leaf("b", "old")])
+    tree_b = MerkleTree.build([leaf("a", "same"), leaf("b", "new"), leaf("z", "z")])
+
+    diff = MerkleTree.diff(tree_a, tree_b)
+    refute "a" in diff
+    assert "b" in diff
+    assert "z" in diff
+  end
 end
