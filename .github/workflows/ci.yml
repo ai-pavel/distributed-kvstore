@@ -13,48 +13,13 @@ jobs:
           elixir-version: '1.16'
       - run: mix deps.get
       - run: mix compile --warnings-as-errors
-      - run: |
-          set +e
-          mix test --cover --export-coverage default
-          rc=$?
-          if [ $rc -eq 3 ]; then exit 0; fi
-          exit $rc
+      - run: mix test --cover
+        env:
+          MIX_ENV: test
       - name: Generate lcov coverage
-        run: |
-          mix run -e '
-            root = :code.root_dir() |> to_string()
-            case Path.wildcard(Path.join(root, "lib/tools-*/ebin")) do
-              [ebin | _] -> :code.add_pathz(to_charlist(ebin))
-              [] -> :ok
-            end
-            :cover.import(~c"cover/default.coverdata")
-            project_root = File.cwd!()
-            {:ok, f} = File.open("lcov.info", [:write])
-            for mod <- :cover.modules() do
-              source_path = try do
-                info = mod.module_info(:compile)
-                src = to_string(info[:source])
-                Path.relative_to(src, project_root)
-              rescue
-                _ ->
-                  name = mod |> to_string() |> String.replace_prefix("Elixir.", "")
-                  parts = name |> String.split(".") |> Enum.map(&Macro.underscore/1)
-                  "lib/" <> Enum.join(parts, "/") <> ".ex"
-              end
-              if File.exists?(source_path) do
-                IO.write(f, "SF:#{source_path}\n")
-                case :cover.analyse(mod, :calls, :line) do
-                  {:ok, lines} ->
-                    for {{_, line}, count} <- lines, do: IO.write(f, "DA:#{line},#{count}\n")
-                  _ -> :ok
-                end
-                IO.write(f, "end_of_record\n")
-              end
-            end
-            File.close(f)
-          ' || true
+        run: mix coveralls.lcov
       - uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: lcov.info
+          files: cover/lcov.info
           fail_ci_if_error: false

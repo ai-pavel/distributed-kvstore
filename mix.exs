@@ -9,7 +9,7 @@ defmodule KVStore.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       elixirc_paths: elixirc_paths(Mix.env()),
-      test_coverage: [threshold: 0]
+      test_coverage: [tool: ExCoveralls]
     ]
   end
 
@@ -27,7 +27,8 @@ defmodule KVStore.MixProject do
     [
       {:plug_cowboy, "~> 2.6"},
       {:jason, "~> 1.4"},
-      {:merkle_map, "~> 0.2", optional: true}
+      {:merkle_map, "~> 0.2", optional: true},
+      {:excoveralls, "~> 0.18", only: :test}
     ]
   end
 end
