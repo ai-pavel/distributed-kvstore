@@ -1,0 +1,2 @@
+# Placeholder so test/support (referenced by elixirc_paths(:test) in mix.exs)
+# exists as a compile path. Add shared ExUnit test helpers here.
