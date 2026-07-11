@@ -8,13 +8,22 @@ defmodule KVStore.RingTest do
     # restarting the supervised process (which races with the supervisor's
     # automatic restarts and can crash the application), we clean the ring
     # state by removing all existing nodes before each test.
-    for node_id <- Ring.nodes() do
+    # Remember the bootstrapped nodes so we can restore them afterwards —
+    # other test modules share this global Ring and rely on those nodes.
+    original_nodes = Ring.nodes()
+
+    for node_id <- original_nodes do
       Ring.remove_node(node_id)
     end
 
     on_exit(fn ->
       for node_id <- Ring.nodes() do
         Ring.remove_node(node_id)
+      end
+
+      # Restore the ring to its original bootstrapped state.
+      for node_id <- original_nodes do
+        Ring.add_node(node_id)
       end
     end)
 

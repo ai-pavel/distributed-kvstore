@@ -9,8 +9,12 @@ defmodule KVStore.SyncTest do
     # supervisor's automatic restarts), we clean up the existing Ring state and
     # add fresh test nodes.
 
-    # Remove all existing nodes from the ring so each test starts clean
-    for node_id <- Ring.nodes() do
+    # Remove all existing nodes from the ring so each test starts clean.
+    # Remember them so we can restore the ring afterwards — other test
+    # modules share this global Ring and rely on the bootstrapped nodes.
+    original_nodes = Ring.nodes()
+
+    for node_id <- original_nodes do
       Ring.remove_node(node_id)
     end
 
@@ -25,11 +29,26 @@ defmodule KVStore.SyncTest do
     Ring.add_node(node_b)
 
     on_exit(fn ->
-      if Process.alive?(pid_a), do: GenServer.stop(pid_a)
-      if Process.alive?(pid_b), do: GenServer.stop(pid_b)
+      # GenServer.stop/1 races with the process exiting on test teardown
+      # (nodes are linked to the test process), so tolerate an already-dead
+      # process instead of crashing the on_exit callback.
+      for pid <- [pid_a, pid_b] do
+        try do
+          if Process.alive?(pid), do: GenServer.stop(pid)
+        catch
+          :exit, _ -> :ok
+        end
+      end
+
       # Clean up test nodes from the ring
       Ring.remove_node(node_a)
       Ring.remove_node(node_b)
+
+      # Restore the nodes the application bootstrapped so subsequent test
+      # modules see the ring in its original state.
+      for node_id <- original_nodes do
+        Ring.add_node(node_id)
+      end
     end)
 
     {:ok, node_a: node_a, node_b: node_b}
