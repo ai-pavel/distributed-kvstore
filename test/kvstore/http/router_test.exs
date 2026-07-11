@@ -73,14 +73,12 @@ defmodule KVStore.HTTP.RouterTest do
     assert get_conn.status == 404
   end
 
-  test "/health returns 200 with node info" do
+  test "/health returns 200 with the uniform service body" do
     conn = conn(:get, "/health") |> call()
 
     assert conn.status == 200
-    body = json_body(conn)
-    assert body["status"] == "ok"
-    assert is_integer(body["nodes"])
-    assert is_list(body["node_ids"])
+    assert get_resp_header(conn, "content-type") |> hd() =~ "application/json"
+    assert json_body(conn) == %{"status" => "ok", "service" => "distributed-kvstore"}
   end
 
   test "/ring returns 200 with the node list shape" do
